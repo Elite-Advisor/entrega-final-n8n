@@ -1,0 +1,624 @@
+{
+  "name": "Telegram Support Ticket Severity (OpenAI)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "b3e98179-5383-486d-a056-4ec2deab7aea",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1856,
+        1056
+      ],
+      "webhookId": "25755807-b57e-4b51-bdfd-f7e14fc89187",
+      "credentials": {
+        "telegramApi": {
+          "id": "T7rnZbF1WL2tOIYd",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "ticket_text",
+              "value": "={{ $json.message.text || $json.message.caption || '' }}"
+            },
+            {
+              "name": "chat_id",
+              "value": "={{ $json.message.chat.id }}"
+            },
+            {
+              "name": "from_user",
+              "value": "={{ $json.message.from.username || $json.message.from.first_name }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5c74cfeb-5428-499b-b679-5b0fdb5f58d9",
+      "name": "Normalize Input1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -1680,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -1504,
+        1248
+      ],
+      "id": "f3a4422e-3ff6-4772-84eb-d1fb1e86c68c",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "j8HaFONYOKqmXvLh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $json.text ?? '';\nraw = raw.trim();\n\n// remove ```json ... ``` or ``` ... ```\nraw = raw.replace(/^```(?:json)?\\s*/i, '').replace(/```$/,'').trim();\n\nlet parsed;\ntry {\n  parsed =  JSON.parse(raw);\n} catch (e) {\n  parsed = { is_ticket: false };\n}\n\nreturn [{\n  json: {\n    ...$json,\n    is_ticket: parsed.is_ticket ?? false,\n    severity: parsed.severity ?? null,\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1184,
+        1056
+      ],
+      "id": "feb714b7-4a98-42ce-9ad9-2bcedf29b8aa",
+      "name": "Parse Severity1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1SzAhYR1bBCnLh22XPwkb5KXSyvmGy7zy068-M6xMc38",
+          "mode": "list",
+          "cachedResultName": "entrega final n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SzAhYR1bBCnLh22XPwkb5KXSyvmGy7zy068-M6xMc38/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1SzAhYR1bBCnLh22XPwkb5KXSyvmGy7zy068-M6xMc38/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $now }}",
+            "chat_id": "={{ $('Normalize Input1').item.json.chat_id }}",
+            "from_user": "={{ $('Normalize Input1').item.json.from_user }}",
+            "ticket_text": "={{ $('Normalize Input1').item.json.ticket_text }}",
+            "severity": "={{ $('Parse Severity1').item.json.severity }}",
+            "status": "OPEN"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "chat_id",
+              "displayName": "chat_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "from_user",
+              "displayName": "from_user",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ticket_text",
+              "displayName": "ticket_text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "severity",
+              "displayName": "severity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -768,
+        960
+      ],
+      "id": "db5886d7-b06b-45a5-ad4a-39a52d8b88ed",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Mpf4q7aiUw9QOkP7",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "Ticket recibido. Será atendido por soporte.",
+        "additionalFields": {}
+      },
+      "id": "5e5afebf-a64a-4d48-99b0-97933eaf00e7",
+      "name": "Respuesta NON-CRITICAL",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        1040
+      ],
+      "webhookId": "1d43f925-26ca-4af1-80ce-ccae9066093b",
+      "credentials": {
+        "telegramApi": {
+          "id": "T7rnZbF1WL2tOIYd",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "No se detectó un pedido de soporte. Por favor describí un problema técnico.",
+        "additionalFields": {}
+      },
+      "id": "f42dba0c-160e-4965-a1e2-06878c1d04c0",
+      "name": "Respuesta No es Ticket",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        1152
+      ],
+      "webhookId": "1d43f925-26ca-4af1-80ce-ccae9066093b",
+      "credentials": {
+        "telegramApi": {
+          "id": "T7rnZbF1WL2tOIYd",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "builtInTools": {},
+        "options": {
+          "textFormat": {
+            "textOptions": {
+              "type": "json_object"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        -320,
+        832
+      ],
+      "id": "066f72a2-e7bf-4940-9dd4-35f551518503",
+      "name": "OpenAI Chat Model1",
+      "credentials": {
+        "openAiApi": {
+          "id": "j8HaFONYOKqmXvLh",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are validating IT support tickets.\n\nReturn ONLY valid JSON.\nDo not use markdown or explanations.\n\nFirst, determine if the message is a valid IT support ticket.\nA valid ticket describes a technical problem, incident, outage, or request for IT assistance.\n\nIf the message is NOT a support ticket, return:\n{\"is_ticket\": false}\n\nIf the message IS a support ticket, classify its severity using these rules:\n\nCRITICAL:\n- Complete service outage\n- Issue affects multiple users or the entire company\n- Core systems down (network, servers, ERP, email, internet)\n- Business operations are blocked\n- Words like: \"caído\", \"no funciona nada\", \"sin servicio\", \"urgente\", \"todos\", \"nadie puede trabajar\"\n\nNON_CRITICAL:\n- Issue affects a single user\n- Partial malfunction\n- Performance issues\n- Requests or questions\n- No immediate business stoppage\n\nIf the message IS a support ticket, return:\n{\"is_ticket\": true, \"severity\": \"CRITICAL\"}\nor\n{\"is_ticket\": true, \"severity\": \"NON_CRITICAL\"}\n\nTicket:\n{{ $json.ticket_text }}\n\njson\n",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1504,
+        1056
+      ],
+      "id": "f7c82622-ccad-48a9-948b-50580915da7d",
+      "name": "Clasificador"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Normalize Input1').item.json.ticket_text }}",
+        "hasOutputParser": true,
+        "messages": {
+          "messageValues": [
+            {
+              "message": "=You are an IT support assistant.\n\nYour task is to summarize and assess the impact of a CRITICAL support ticket.\n\nRespond ONLY in valid JSON.\nDo NOT use markdown.\nDo NOT add explanations or extra text.\n\nOutput format:\n{\n  \"summary\": \"Short summary of the issue in one sentence\",\n  \"impact\": \"Clear description of business or operational impact\"\n}\n\nBe concise and factual.\n"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -336,
+        608
+      ],
+      "id": "8992815d-3e16-45a0-a54f-b8e9fe519494",
+      "name": "Casos críticos"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "Ticket crítico recibido. Soporte fue notificado.",
+        "additionalFields": {}
+      },
+      "id": "73fc4521-1d72-4138-8e5d-bb32598cd2ec",
+      "name": "Respuesta CRITICAL",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        672,
+        624
+      ],
+      "webhookId": "1d43f925-26ca-4af1-80ce-ccae9066093b",
+      "credentials": {
+        "telegramApi": {
+          "id": "T7rnZbF1WL2tOIYd",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "cristian.morales.gallo@gmail.com",
+        "subject": "=CRITICAL | {{ $('Normalize Input1').item.json.from_user }}",
+        "message": "=Ticket: {{ $('Normalize Input1').item.json.ticket_text }}  Summary: {{ $('Parse Severity').item.json.summary }} Impact: {{ $('Parse Severity').item.json.impact }}  User: {{ $('Normalize Input1').item.json.from_user }} Chat ID: {{ $('Normalize Input1').item.json.chat_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        368,
+        608
+      ],
+      "id": "262ce345-bb7d-450e-a481-744ade4c79cb",
+      "name": "Send a message",
+      "webhookId": "21123573-b53e-4fd0-8074-4b9cb7244937",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "pip8vlOwJAvllanN",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "642114d7-96fe-41a0-ab44-627a8bc4fe9b",
+              "leftValue": "={{ $json.is_ticket }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "2d52ac05-bc65-471d-967b-e3ea160e8a6f",
+              "leftValue": "={{ $('Normalize Input1').item.json.ticket_text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "202d8724-1ce2-48be-844c-cff988023440",
+      "name": "IF Is Ticket",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        1056
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c4172fee-427f-47a7-b398-518e45e32ded",
+              "leftValue": "={{ $json.severity }}",
+              "rightValue": "CRITICAL",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -560,
+        960
+      ],
+      "id": "b7fd01ff-5356-422f-b865-492a5584fafd",
+      "name": "IF Is Critical"
+    },
+    {
+      "parameters": {
+        "jsCode": "let raw = $json.text ?? '';\nraw = raw.trim();\nraw = raw.replace(/^```(?:json)?\\s*/i, '').replace(/```$/,'').trim();\n\nlet parsed = {};\ntry { parsed = JSON.parse(raw); } catch(e) { parsed = {}; }\n\nreturn [{\n  json: {\n    ...$json,\n    summary: parsed.summary ?? '',\n    impact: parsed.impact ?? ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        64,
+        544
+      ],
+      "id": "3a0aed31-c496-4b56-acdd-17aa423b370c",
+      "name": "Parse Severity"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input1": {
+      "main": [
+        [
+          {
+            "node": "Clasificador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Clasificador",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Severity1": {
+      "main": [
+        [
+          {
+            "node": "IF Is Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "IF Is Critical",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Casos críticos",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificador": {
+      "main": [
+        [
+          {
+            "node": "Parse Severity1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Casos críticos": {
+      "main": [
+        [
+          {
+            "node": "Parse Severity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta CRITICAL": {
+      "main": [
+        []
+      ]
+    },
+    "IF Is Ticket": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta No es Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Is Critical": {
+      "main": [
+        [
+          {
+            "node": "Casos críticos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta NON-CRITICAL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Severity": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Respuesta CRITICAL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "728fab49-f35e-4c5d-ac4b-d847ec4d49c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "6c37e64b6b926122bf79e1c322e6a1d50ab6d8eeaaa1200647f5df9c4f652e49"
+  },
+  "id": "ZRDn465LQuxvmzo27SyCM",
+  "tags": []
+}
