@@ -1,172 +1,272 @@
 # entrega-final-n8n
-Support Ticket Severity via Telegram (n8n + 2 LLMs + Conditional + Notifications)
+Telegram Support Ticket Severity Automation (n8n + OpenAI)
+📌 Descripción general
 
-Workflow de n8n que recibe tickets de soporte por Telegram, clasifica severidad con un LLM, enruta por condicional y, para casos críticos, genera un resumen/impacto con un segundo LLM y notifica automáticamente por Telegram.
+Este proyecto implementa un workflow automático en n8n para la gestión de tickets de soporte IT utilizando Modelos de Lenguaje (LLMs).
 
-Cumple: trigger automático, 2 nodos LLM, condicional dependiente del LLM, notificación, manejo básico de errores y pruebas reproducibles.
+El sistema permite:
 
-Arquitectura
+Recibir solicitudes de soporte vía Telegram
 
-Telegram Trigger (nuevo mensaje)
+Validar automáticamente si el mensaje es un ticket real
 
-LLM #1: Clasificación severidad (CRITICAL / NON_CRITICAL) en JSON estructurado
+Clasificar la severidad del ticket (CRITICAL / NON_CRITICAL) usando IA
 
-IF: rama CRITICAL vs NON_CRITICAL
+Almacenar los tickets válidos en Google Sheets
 
-(CRITICAL) LLM #2: resumen + impacto + preguntas de triage + acciones sugeridas (JSON)
+Escalar automáticamente los tickets críticos mediante notificación
 
-Notificación: mensaje al chat de soporte (Telegram)
+Responder siempre al usuario con un mensaje claro
 
-Acknowledgement: respuesta automática al usuario
+El objetivo es demostrar orquestación de LLMs, lógica condicional basada en IA y automatización end-to-end con un caso de uso real.
 
-Manejo de error: si el JSON del LLM1 no parsea, se notifica a soporte y se avisa al usuario
-
-Requisitos
-
-n8n (self-hosted o cloud)
-
-Bot de Telegram (token)
-
-OpenAI API key
-
-Variables de entorno en n8n:
-
-OPENAI_API_KEY
-
-SUPPORT_CHAT_ID (ID numérico del chat/grupo donde llegan las alertas críticas)
-
-Setup paso a paso
-1) Crear el bot de Telegram
-
-En Telegram, abrí @BotFather
-
-/newbot y seguí los pasos
-
-Guardá el token del bot (ej: 123456:ABC...)
-
-2) Obtener el SUPPORT_CHAT_ID
-
-Opción rápida:
-
-Agregá el bot a un grupo de soporte (o usá un chat directo).
-
-Enviá un mensaje en ese chat.
-
-En n8n, ejecutá temporalmente un workflow con Telegram Trigger y mirá el message.chat.id en la ejecución para copiar el ID.
-
-Ese número (puede ser negativo si es grupo) va en SUPPORT_CHAT_ID.
-
-3) Configurar variables de entorno
-
-En n8n (docker/.env o tu sistema), agregá:
-
-OPENAI_API_KEY=...
-
-SUPPORT_CHAT_ID=...
-
-Reiniciá n8n si corresponde.
-
-4) Importar el workflow
-
-n8n → Workflows → Import from File / Paste JSON
-
-Pegá el contenido de workflow.json
-
-5) Configurar credenciales en n8n
-
-Telegram:
-
-Credentials → Telegram API
-
-Pegá el bot token
-
-Asigná esa credencial a:
-
+🧠 Arquitectura del workflow
+Flujo general
 Telegram Trigger
+→ Normalize Input
+→ IF ticket_text not empty
+→ LLM1 (Validación + Severidad)
+→ Parse LLM1 Output
+→ IF is_ticket == true
+   → Google Sheets (guardar ticket)
+   → IF severity == CRITICAL
+      → LLM2 (resumen + impacto)
+      → Parse LLM2 Output
+      → Notificación a Soporte
+      → Respuesta CRITICAL al usuario
+   → ELSE
+      → Respuesta NON-CRITICAL al usuario
+→ ELSE
+   → Respuesta "No es un ticket"
 
-Todos los nodos Telegram sendMessage
+🔑 Componentes principales
+1️⃣ Trigger: Telegram
 
-OpenAI:
+Tipo: Telegram Trigger
 
-Este workflow usa HTTP Request con header Authorization: Bearer {{$env.OPENAI_API_KEY}}
+Evento: mensaje entrante
 
-No requiere credencial nativa de OpenAI en n8n, solo la variable de entorno.
+Función: punto de entrada del sistema
 
-6) Activar el workflow
+📌 Requiere configuración manual:
 
-Activá el workflow (Active = ON)
+Token del bot de Telegram (no incluido)
 
-Uso
+Chat habilitado para el bot
 
-Enviá un mensaje al bot con el texto del ticket (texto libre).
+2️⃣ Normalize Input
 
-El sistema clasifica severidad automáticamente.
+Nodo de normalización para desacoplar el flujo del payload de Telegram.
 
-Si es CRITICAL:
+Campos normalizados:
 
-Notifica al chat/grupo SUPPORT_CHAT_ID
+ticket_text
 
-Responde al usuario confirmando escalación
+chat_id
 
-Si es NON_CRITICAL:
+from_user
 
-Responde al usuario confirmando recepción
+timestamp
 
-Pruebas (para la evidencia del curso)
+Esto permite:
 
-Ejecutá al menos 3 entradas:
+Manejar texto, captions o mensajes vacíos
 
-CRITICAL (caída general)
+Evitar acoplamiento directo al JSON de Telegram
 
-“Desde las 9 AM ningún usuario puede conectarse al WiFi de la oficina central. Operación detenida.”
+3️⃣ LLM1 — Validación y clasificación de severidad
 
-NON_CRITICAL (consulta / menor)
+Nodo: Basic LLM Chain + OpenAI Chat Model
 
-“¿Cómo cambio la contraseña del WiFi de invitados?”
+Modelo recomendado: gpt-4o-mini
 
-Caso borderline (para mostrar criterio)
+Rol: lógica y clasificación
 
-“Un usuario no puede imprimir desde la impresora del piso 2.”
+Funciones:
 
-Guardá:
+Determina si el mensaje es un ticket válido (is_ticket)
 
-Capturas de la ejecución en n8n (logs)
+Clasifica severidad (CRITICAL / NON_CRITICAL)
 
-Capturas del chat del bot (entrada)
+Salida estructurada (ejemplo):
 
-Capturas del mensaje al grupo de soporte (si crítico)
+{
+  "is_ticket": true,
+  "severity": "CRITICAL"
+}
 
-Prompts (prompts.txt sugerido)
-Prompt LLM1 (Clasificación)
 
-El prompt está embebido en el nodo “LLM1 - Classify Severity”.
+📌 El prompt define reglas explícitas de severidad para evitar ambigüedad.
 
-Salida estricta JSON:
+4️⃣ Parse LLM1 Output
 
-{ "severity": "CRITICAL" | "NON_CRITICAL", "confidence": 0-1, "category": ... }
+Nodo Function que:
 
-Prompt LLM2 (Generación)
+Limpia posibles code fences
 
-Embebido en el nodo “LLM2 - Summary & Triage”.
+Parsea JSON devuelto por el LLM
 
-Salida estricta JSON:
+Garantiza que is_ticket y severity existan siempre
 
-{ "summary": "...", "impact": "...", "triage_questions": [...], "first_actions": [...] }
+Esto evita errores si el modelo devuelve texto inesperado.
 
-Seguridad / buenas prácticas
+5️⃣ IF is_ticket
 
-No subas credenciales reales al repo.
+Condicional basado en salida del LLM1.
 
-El workflow usa variables de entorno (OPENAI_API_KEY, SUPPORT_CHAT_ID).
+false → mensaje de descarte al usuario
 
-El bot token se configura como credencial interna de n8n (no se versiona).
+true → continuar flujo
 
-Manejo de errores: si LLM1 devuelve algo no parseable, se notifica a soporte y se responde al usuario informando revisión manual.
+❗ Los mensajes basura nunca se guardan en Sheets
 
-Limitaciones y sesgos
+6️⃣ Google Sheets — Persistencia de tickets
 
-La severidad depende del texto provisto por el usuario; mensajes incompletos pueden ser clasificados incorrectamente.
+Nodo: Append Row
 
-El LLM puede sesgar hacia CRITICAL en textos alarmistas o hacia NON_CRITICAL en textos vagos.
+Función: base de datos simple de tickets
 
-Recomendación: reforzar criterios en el prompt y/o añadir un paso adicional de verificación para producción.
+📌 Requiere configuración manual:
+
+Google Account
+
+Spreadsheet ID
+
+Hoja con las siguientes columnas mínimas:
+
+Columna	Descripción
+timestamp	Fecha y hora
+chat_id	ID del chat
+from_user	Usuario de Telegram
+ticket_text	Texto original
+severity	CRITICAL / NON_CRITICAL
+status	OPEN
+
+Todos los tickets válidos (críticos o no) se almacenan.
+
+7️⃣ IF severity == CRITICAL
+
+Segundo condicional basado exclusivamente en salida del LLM1.
+
+CRITICAL → escalar
+
+NON_CRITICAL → respuesta simple al usuario
+
+8️⃣ LLM2 — Resumen e impacto (solo CRITICAL)
+
+Modelo: gpt-4o-mini
+
+Rol: generación de contenido
+
+Función:
+
+Resumir el problema
+
+Describir impacto operativo
+
+Salida esperada:
+
+{
+  "summary": "Total outage of the billing system",
+  "impact": "All invoicing operations are blocked"
+}
+
+
+📌 LLM2 no decide severidad, solo redacta.
+
+9️⃣ Parse LLM2 Output
+
+Nodo Function que:
+
+Parsea el JSON de LLM2
+
+Expone summary e impact para notificaciones
+
+🔔 Notificación a Soporte
+
+Canal: Email / Telegram / Slack (ejemplo con Gmail)
+
+Contenido:
+
+Texto original
+
+Summary
+
+Impact
+
+Usuario y chat_id
+
+📌 Requiere configuración manual:
+
+Credenciales del canal elegido
+
+Destinatarios
+
+💬 Respuesta al usuario
+
+Siempre hay respuesta:
+
+Basura → “No se detectó un pedido de soporte”
+
+NON_CRITICAL → “Ticket recibido”
+
+CRITICAL → “Ticket crítico recibido, soporte notificado”
+
+🧪 Pruebas recomendadas
+
+Ejecutar al menos estos casos:
+
+Mensaje	Resultado esperado
+“hola”	descartado
+“no anda mi wifi”	ticket NON_CRITICAL
+“nadie tiene internet”	ticket CRITICAL + notificación
+
+Capturar:
+
+Ejecución en n8n
+
+Filas en Google Sheets
+
+Mensajes enviados
+
+🔐 Seguridad y credenciales
+
+❌ No se incluyen:
+
+Tokens
+
+API keys
+
+IDs personales
+
+📌 Debe configurarse manualmente:
+
+Telegram Bot Token
+
+OpenAI API Key
+
+Google Sheets credentials
+
+Canal de notificación
+
+Usar credenciales de n8n, nunca hardcodear.
+
+⚠️ Limitaciones conocidas
+
+Clasificación depende del prompt (posible sesgo semántico)
+
+No hay memoria conversacional
+
+No se manejan adjuntos (solo texto)
+
+Google Sheets no es un sistema de tickets completo
+
+📦 Archivos incluidos
+
+workflow.json → importar en n8n
+
+README.md → este documento
+
+prompts.txt → prompts usados en LLM1 y LLM2
+
+Evidencias → capturas o video de ejecución
